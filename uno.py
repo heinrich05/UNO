@@ -86,53 +86,53 @@ class Spielleitung:
                 break
         return möglich
     
-    def farbe_wünschen(self) -> str:
-        #todo
-        pass
-    
     def karte_legen(self, spieler:Spieler, karte:Karte):
-        """Wenn eine Karte gültig ist, wird die Karte aus der Hand des Spielers genommen und auf den Stapel gelegt.
-        Außerdem werden die aus dem Zug resultierenden Strafkarten verteilt und es wird auf UNO/Gewinn überprüft"""
-        #Kann die Karte ohne Weiteres auf den Stapel gelegt werden?
+        """Wenn eine Karte gültig ist, wird die Karte aus der Hand des Spielers genommen und auf den Stapel gelegt"""
         if (self.strafkarten == 0 and self.karte_überprüfen(karte)) or (self.strafkarten != 0 and self.karte_überprüfen(karte,True)):
             spieler.karten.pop(spieler.karten.index(karte))
-            
-            #Kartenaktionen
-            if karte.zahl == 13: #Farbe wünschen
-                self.farbe = self.farbe_wünschen()
+
+    def kartenaktionen_ausführen(self, karte:Karte) -> bool:
+        """Führt die Aktionen, die auf das Legen einer Karte folgen, aus und gibt zurück, ob sich eine Farbe gewünscht werden muss"""
+        farbe_wünschen = False
+        
+        if karte.zahl == 13: #Farbe wünschen
+            farbe_wünschen = True
+            self.aktueller_spieler_index += 1
+        elif karte.zahl == 14: #+4 und Farbe wünschen
+            farbe_wünschen = True
+            self.strafkarten += 4
+            self.aktueller_spieler_index += 1
+        else:
+            if karte.zahl == 10: #Aussetzen
+                self.aktueller_spieler_index += 2
+            elif karte.zahl == 11: #Richtungswechsel
+                self.aktueller_spieler_index -= 1
+            else:    
+                if karte.zahl == 12: #+2
+                    self.strafkarten += 2
                 self.aktueller_spieler_index += 1
-            elif karte.zahl == 14: #+4 und Farbe wünschen
-                self.farbe = self.farbe_wünschen()
-                self.strafkarten += 4
-                self.aktueller_spieler_index += 1
-            else:
-                if karte.zahl == 10: #Aussetzen
-                    self.aktueller_spieler_index += 2
-                elif karte.zahl == 11: #Richtungswechsel
-                    self.aktueller_spieler_index -= 1
-                else:    
-                    if karte.zahl == 12: #+2
-                        self.strafkarten += 2
-                    self.aktueller_spieler_index += 1
-                self.farbe = karte.farbe
-            self.zahl = karte.zahl
-            
-            #Auf UNO überprüfen
-            if (len(spieler.karten) == 1 and spieler.uno == False) or (len(spieler.karten) > 1 and spieler.uno == True):
-                self.strafkarten_verteilen(2, spieler)
-            
-            #Auf Gewinn überprüfen
-            elif len(spieler.karten) == 0:
-                self.gewinn = True
-            
-            #Verteilt Strafkarten für den nächsten Spieler, wenn er sie nicht verlängern kann
-            if self.strafkarten != 0 and not self.zug_möglich(self.aktueller_spieler,True):
-                self.strafkarten_verteilen(self.strafkarten, self.aktueller_spieler)
-            
-            #Verteilt Strafkarten für den nächsten Spieler, wenn er nicht legen kann
-            while not self.zug_möglich(self.aktueller_spieler):
-                self.strafkarten_verteilen(1, self.aktueller_spieler)
+            self.farbe = karte.farbe
+        self.zahl = karte.zahl
+
+        return farbe_wünschen
     
+    def zug_abschließen(self,spieler:Spieler):
+        #Auf UNO überprüfen
+        if (len(spieler.karten) == 1 and spieler.uno == False) or (len(spieler.karten) > 1 and spieler.uno == True):
+            self.strafkarten_verteilen(2, spieler)
+        
+        #Auf Gewinn überprüfen
+        elif len(spieler.karten) == 0:
+            self.gewinn = True
+        
+        #Verteilt Strafkarten für den neuen Spieler, wenn er sie nicht verlängern kann
+        if self.strafkarten != 0 and not self.zug_möglich(self.aktueller_spieler,True):
+            self.strafkarten_verteilen(self.strafkarten, self.aktueller_spieler)
+        
+        #Verteilt Strafkarten für den neuen Spieler, wenn er nicht legen kann
+        while not self.zug_möglich(self.aktueller_spieler):
+            self.strafkarten_verteilen(1, self.aktueller_spieler)
+
     def neue_runde(self):
         """Erstellt die Spielumgebung für eine neue Runde"""
         self.gewinn = False
