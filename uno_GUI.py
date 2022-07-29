@@ -1,7 +1,10 @@
 """2-Spieler GUI für UNO"""
 
+from msilib.schema import Dialog
 import sys
-from PySide6.QtWidgets import QApplication, QMainWindow
+from tkinter import N, Button
+from unicodedata import name
+from PySide6.QtWidgets import QApplication, QMainWindow, QMessageBox, QPushButton
 from PySide6.QtGui import QPixmap
 from uno import *
 from ui.ui_uno import Ui_MainWindow
@@ -64,12 +67,37 @@ class UnoWindow(QMainWindow, Ui_MainWindow):
             k = self.spielleitung.aktueller_spieler.karten[self.sp1_kartenslider.value()]
         else:
             k = self.spielleitung.aktueller_spieler.karten[self.sp2_kartenslider.value()]
-        self.spielleitung.karte_legen(self.spielleitung.aktueller_spieler, k)
-        if self.sp1_uno.isChecked() and self.spielleitung.spieler_liste[0].uno == False:
-            self.sp1_uno.toggle()
-        elif self.sp2_uno.isChecked() and self.spielleitung.spieler_liste[1].uno == False:
-            self.sp2_uno.toggle()
-        self.update_display()
+        
+        if self.spielleitung.karte_überprüfen(k):
+            f = self.spielleitung.karte_legen(self.spielleitung.aktueller_spieler, k)
+            if not self.spielleitung.gewinn:
+                if f:
+                    self.farbauswahl()
+                self.spielleitung.karten_ziehen()
+                if self.sp1_uno.isChecked() and self.spielleitung.spieler_liste[0].uno == False:
+                    self.sp1_uno.toggle()
+                elif self.sp2_uno.isChecked() and self.spielleitung.spieler_liste[1].uno == False:
+                    self.sp2_uno.toggle()
+            self.update_display()
+    
+    def farbauswahl(self):
+        """Erzeugt einen Dialog zur Farbauswahl"""
+        Dialog = QMessageBox()
+        Dialog.setText("Welche Farbe möchtest Du wählen?")
+        btn_rot = QPushButton("rot")
+        btn_grün = QPushButton("grün")
+        btn_blau = QPushButton("blau")
+        btn_gelb = QPushButton("gelb")
+        Dialog.addButton(btn_rot, QMessageBox.AcceptRole)
+        Dialog.addButton(btn_grün, QMessageBox.AcceptRole)
+        Dialog.addButton(btn_blau, QMessageBox.AcceptRole)
+        Dialog.addButton(btn_gelb, QMessageBox.AcceptRole)
+        Dialog.buttonClicked.connect(self.farbe_festlegen)
+        Dialog.exec()
+
+    def farbe_festlegen(self, button):
+        """Legt die Farbe der Spielleitung auf die des gedrückten Buttons fest"""
+        self.spielleitung.farbe = button.text()
         
     def datei_finden(self, k:Karte) -> str:
         """Gibt den Dateipfad für die Bilddatei einer Karte an"""

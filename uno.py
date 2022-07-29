@@ -48,8 +48,8 @@ class Spielleitung:
         
     def karte_erstellen(self) -> Karte:
         """Erstellt eine Karte"""
-        farbmöglichkeiten = ["rot", "grün", "blau", "gelb"] #"schwarz" wegen fehlender Implementation für Farbauswahl erst einmal deaktiviert
-        farbe = choices(farbmöglichkeiten, weights=[13,13,13,13], k=1)[0]
+        farbmöglichkeiten = ["rot", "grün", "blau", "gelb", "schwarz"]
+        farbe = choices(farbmöglichkeiten, weights=[13,13,13,13,2], k=1)[0]
         if farbe == 'schwarz':
             zahl = randint(13,14)
             karte = Karte(farbe, zahl)
@@ -70,29 +70,34 @@ class Spielleitung:
         self.strafkarten = 0
         spieler.uno = False
         
-    def karte_überprüfen(self, karte:Karte, verlängern:bool = False) -> bool:
-        """Überprüft, ob eine Karte auf den Stapel gelegt werden kann oder ggf. ob sie eine Strafkarte verlängert"""
-        if verlängern == False:
+    def karte_überprüfen(self, karte:Karte) -> bool:
+        """Überprüft, ob eine Karte auf den Stapel gelegt werden kann"""
+        if self.strafkarten == 0:
             return(karte.farbe == 'schwarz' or karte.farbe == self.farbe or karte.zahl == self.zahl)
         else:
-            return (karte.zahl == self.zahl or karte.zahl == 14)
+            return(karte.zahl == self.zahl or karte.zahl == 1)
         
-    def zug_möglich(self, spieler:Spieler, verlängern:bool = False) -> bool:
-        """Überprüft, ob ein Spieler eine Karte besitzt, die er legen kann oder ggf. eine, mit der er eine Strafkarte verlängern kann"""
+    def zug_möglich(self, spieler:Spieler) -> bool:
+        """Überprüft, ob ein Spieler eine Karte besitzt, die er legen kann"""
         möglich = False
         for karte in spieler.karten:
-            if self.karte_überprüfen(karte, verlängern):
+            if self.karte_überprüfen(karte):
                 möglich = True
                 break
         return möglich
-    
-    def karte_legen(self, spieler:Spieler, karte:Karte):
-        """Wenn eine Karte gültig ist, wird die Karte aus der Hand des Spielers genommen und auf den Stapel gelegt"""
-        if (self.strafkarten == 0 and self.karte_überprüfen(karte)) or (self.strafkarten != 0 and self.karte_überprüfen(karte,True)):
-            spieler.karten.pop(spieler.karten.index(karte))
 
-    def kartenaktionen_ausführen(self, karte:Karte) -> bool:
-        """Führt die Aktionen, die auf das Legen einer Karte folgen, aus und gibt zurück, ob sich eine Farbe gewünscht werden muss"""
+    def verlängern_möglich(self, spieler:Spieler) -> bool:
+        """Überprüft, ob ein Spieler eine Karte besitzt, die eine Strafkarte verlängert"""
+        möglich = False
+        for karte in spieler.karten:
+            if karte.zahl == self.zahl or karte.zahl == 14:
+                möglich = True
+                break
+        return möglich
+
+    def karte_legen(self, spieler:Spieler, karte:Karte) -> bool:
+        """Legt eine Karte auf den Stapel, führt die Aktionen, die auf das Legen einer Karte folgen, aus und gibt zurück, ob sich eine Farbe gewünscht werden muss"""
+        spieler.karten.pop(spieler.karten.index(karte))
         farbe_wünschen = False
         
         if karte.zahl == 13: #Farbe wünschen
@@ -114,9 +119,6 @@ class Spielleitung:
             self.farbe = karte.farbe
         self.zahl = karte.zahl
 
-        return farbe_wünschen
-    
-    def zug_abschließen(self,spieler:Spieler):
         #Auf UNO überprüfen
         if (len(spieler.karten) == 1 and spieler.uno == False) or (len(spieler.karten) > 1 and spieler.uno == True):
             self.strafkarten_verteilen(2, spieler)
@@ -124,9 +126,13 @@ class Spielleitung:
         #Auf Gewinn überprüfen
         elif len(spieler.karten) == 0:
             self.gewinn = True
-        
+
+        return farbe_wünschen
+    
+    def karten_ziehen(self):
+        """Wenn der aktuelle Spieler Karten ziehen muss, bekommt er diese, bis er wieder legen kann"""
         #Verteilt Strafkarten für den neuen Spieler, wenn er sie nicht verlängern kann
-        if self.strafkarten != 0 and not self.zug_möglich(self.aktueller_spieler,True):
+        if self.strafkarten != 0 and not self.verlängern_möglich(self.aktueller_spieler):
             self.strafkarten_verteilen(self.strafkarten, self.aktueller_spieler)
         
         #Verteilt Strafkarten für den neuen Spieler, wenn er nicht legen kann
@@ -136,14 +142,16 @@ class Spielleitung:
     def neue_runde(self):
         """Erstellt die Spielumgebung für eine neue Runde"""
         self.gewinn = False
+        self.farbe = "schwarz"
         
         for spieler in self.spieler_liste:
             spieler.karten.clear()
             self.strafkarten_verteilen(7, spieler)
             
-        erste_karte = self.karte_erstellen()
-        self.farbe = erste_karte.farbe
-        self.zahl = erste_karte.zahl
+        while self.farbe == "schwarz":
+            erste_karte = self.karte_erstellen()
+            self.farbe = erste_karte.farbe
+            self.zahl = erste_karte.zahl
         self.aktueller_spieler_index = randint(0,len(self.spieler_liste)-1)
         
         #Falls der erste Spieler nicht legen kann
